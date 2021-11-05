@@ -1,0 +1,78 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "defaultValue": "centraluseuap",
+            "type": "String"
+        },
+        "environment_name": {
+            "defaultValue": "",
+            "type": "String"
+        },
+        "personalAccessToken": {
+            "defaultValue": "",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+    {
+        "name": "azdevopsagent3",
+        "type": "Microsoft.Web/containerApps",
+        "apiVersion": "2021-03-01",
+        "kind": "containerapp",
+        "location": "[parameters('location')]",
+        "properties": {
+            "kubeEnvironmentId": "[resourceId('Microsoft.Web/kubeEnvironments', parameters('environment_name'))]",
+            "configuration": {
+                "activeRevisionsMode": "single",
+                "secrets": [
+                {
+                    "name": "personalaccesstoken",
+                    "value": "[parameters('personalAccessToken')]"
+                }]
+            },
+            "template": {
+                "containers": [
+                    {
+                        "image": "jorgearteiro/azdevops.agent:2.194.0",
+                        "name": "azdevopsagent",
+                        "env": [
+                            {
+                                "name": "AZP_URL",
+                                "value": "https://dev.azure.com/jorgearteiro"
+                            },
+                            {
+                                "name": "AZP_POOL",
+                                "value": "containerapps"
+                            },                            
+                            {
+                                "name": "AZP_TOKEN",
+                                "secretref": "personalaccesstoken"
+                            }
+                        ]
+                    }
+                ],
+                "scale": {
+                    "minReplicas": 0,
+                    "maxReplicas": 10,
+                    "rules": [
+                        {
+                            "name": "azurepipelines",
+                            "custom": {
+                                "type": "azure-pipelines",
+                                "metadata": {
+                                    "poolID": "12",
+                                    "organizationURLFromEnv": "AZP_URL",
+                                    "personalAccessTokenFromEnv": "AZP_TOKEN",
+                                    "targetPipelinesQueueLength": "1"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }]
+}
